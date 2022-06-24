@@ -1,3 +1,5 @@
+use std::thread::__FastLocalKeyInner;
+
 use bevy::ecs::event::{Events, ManualEventReader};
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
@@ -70,12 +72,12 @@ fn player_move(
             for key in keys.get_pressed() {
                 if window.cursor_locked() {
                     match key {
-                        KeyCode::W => velocity += forward,
-                        KeyCode::S => velocity -= forward,
-                        KeyCode::A => velocity -= right,
-                        KeyCode::D => velocity += right,
-                        KeyCode::Space => velocity += Vec3::Y,
-                        KeyCode::LShift => velocity -= Vec3::Y,
+                        KeyCode::W | KeyCode::Up => velocity += forward,
+                        KeyCode::S | KeyCode::Down => velocity -= forward,
+                        KeyCode::A | KeyCode::Left => velocity -= right,
+                        KeyCode::D | KeyCode::Right => velocity += right,
+                        KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
+                        KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
                         _ => (),
                     }
                 }
