@@ -82,11 +82,12 @@ fn player_move(
                         KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
                         KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
                         KeyCode::LShift => boost = settings.boost,
+                        // Note: bevy 0.7 bug: if you press LShift and then Comma no additional key seems to be pressed
                         _ => (),
                     }
                 }
             }
-
+            
             velocity = velocity.normalize_or_zero();
 
             transform.translation += velocity * time.delta_seconds() * settings.speed * boost
