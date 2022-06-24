@@ -1,5 +1,3 @@
-use std::thread::__FastLocalKeyInner;
-
 use bevy::ecs::event::{Events, ManualEventReader};
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
@@ -16,6 +14,9 @@ struct InputState {
 pub struct MovementSettings {
     pub sensitivity: f32,
     pub speed: f32,
+
+    /// How many times faster to move with shift held down?
+    pub boost: f32
 }
 
 impl Default for MovementSettings {
@@ -23,6 +24,7 @@ impl Default for MovementSettings {
         Self {
             sensitivity: 0.00012,
             speed: 12.,
+            boost: 4.
         }
     }
 }
@@ -68,6 +70,7 @@ fn player_move(
             let local_z = transform.local_z();
             let forward = -Vec3::new(local_z.x, 0., local_z.z);
             let right = Vec3::new(local_z.z, 0., -local_z.x);
+            let mut boost = 1.;
 
             for key in keys.get_pressed() {
                 if window.cursor_locked() {
@@ -78,6 +81,7 @@ fn player_move(
                         KeyCode::D | KeyCode::Right => velocity += right,
                         KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
                         KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
+                        KeyCode::LShift => boost = settings.boost,
                         _ => (),
                     }
                 }
@@ -85,7 +89,7 @@ fn player_move(
 
             velocity = velocity.normalize_or_zero();
 
-            transform.translation += velocity * time.delta_seconds() * settings.speed
+            transform.translation += velocity * time.delta_seconds() * settings.speed * boost
         }
     }
 }
