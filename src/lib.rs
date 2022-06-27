@@ -71,6 +71,9 @@ fn player_move(
             let forward = -Vec3::new(local_z.x, 0., local_z.z);
             let right = Vec3::new(local_z.z, 0., -local_z.x);
             let mut boost = 1.;
+            let mut rx = 0.;
+            let mut ry = 0.;
+            let mut rz = 0.;
 
             for key in keys.get_pressed() {
                 if window.cursor_locked() {
@@ -82,6 +85,14 @@ fn player_move(
                         KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
                         KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
                         KeyCode::LShift => boost = settings.boost,
+
+
+                        KeyCode::LBracket => { ry -= time.delta_seconds(); }, // yaw, pitch, roll.
+                        KeyCode::RBracket => { ry += time.delta_seconds(); },
+                        KeyCode::Q => { rx -= time.delta_seconds(); }, // yaw, pitch, roll.
+                        KeyCode::E => { rx += time.delta_seconds(); println!("pressed") },
+                        KeyCode::Z => { rz -= time.delta_seconds(); }, // yaw, pitch, roll.
+                        KeyCode::X => { rz += time.delta_seconds(); println!("pressed") },
                         // Note: bevy 0.7 bug: if you press LShift and then Comma no additional key seems to be pressed
                         _ => (),
                     }
@@ -90,10 +101,31 @@ fn player_move(
             
             velocity = velocity.normalize_or_zero();
 
-            transform.translation += velocity * time.delta_seconds() * settings.speed * boost
+            transform.translation += velocity * time.delta_seconds() * settings.speed * boost;
+
+            let window = get_primary_window_size(&windows);
+            let delta_x = {
+                let delta = rx / 10. * std::f32::consts::PI * 2.0;
+                // if pan_orbit.upside_down { -delta } else { delta }
+                delta
+            };
+            let delta_y = settings.speed * ry / 100. * std::f32::consts::PI;
+            let delta_z = settings.speed * rz / 100. * std::f32::consts::PI;
+            let yaw = Quat::from_rotation_y(-delta_x);
+            let pitch = Quat::from_rotation_x(-delta_y);
+            let roll = Quat::from_rotation_z(-delta_z);
+            transform.rotation = yaw * transform.rotation; // rotate around global y axis
+            transform.rotation = transform.rotation * pitch * roll; // rotate around local x axis
         }
     }
 }
+
+fn get_primary_window_size(windows: &Res<Windows>) -> Vec2 {
+    let window = windows.get_primary().unwrap();
+    let window = Vec2::new(window.width() as f32, window.height() as f32);
+    window
+}
+
 
 /// Handles looking around if cursor is locked
 fn player_look(
