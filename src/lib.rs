@@ -90,9 +90,9 @@ fn player_move(
                         KeyCode::LBracket => { ry -= time.delta_seconds(); }, // yaw, pitch, roll.
                         KeyCode::RBracket => { ry += time.delta_seconds(); },
                         KeyCode::Q => { rx -= time.delta_seconds(); }, // yaw, pitch, roll.
-                        KeyCode::E => { rx += time.delta_seconds(); println!("pressed") },
+                        KeyCode::E => { rx += time.delta_seconds(); },
                         KeyCode::Z => { rz -= time.delta_seconds(); }, // yaw, pitch, roll.
-                        KeyCode::X => { rz += time.delta_seconds(); println!("pressed") },
+                        KeyCode::X => { rz += time.delta_seconds(); },
                         // Note: bevy 0.7 bug: if you press LShift and then Comma no additional key seems to be pressed
                         _ => (),
                     }
