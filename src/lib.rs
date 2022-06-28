@@ -104,12 +104,12 @@ fn player_move(
 
             let window = get_primary_window_size(&windows);
             let delta_x = {
-                let delta = rx / 10. * std::f32::consts::PI * 2.0;
+                let delta =  settings.speed * boost * rx / 10. * std::f32::consts::PI * 2.0;
                 // if pan_orbit.upside_down { -delta } else { delta }
                 delta
             };
-            let delta_y = settings.speed * ry / 100. * std::f32::consts::PI;
-            let delta_z = settings.speed * rz / 100. * std::f32::consts::PI;
+            let delta_y = settings.speed * boost * ry / 100. * std::f32::consts::PI;
+            let delta_z = settings.speed * boost * rz / 100. * std::f32::consts::PI;
             let yaw = Quat::from_rotation_y(-delta_x);
             let pitch = Quat::from_rotation_x(-delta_y);
             let roll = Quat::from_rotation_z(-delta_z);
