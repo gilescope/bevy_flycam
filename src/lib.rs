@@ -85,8 +85,7 @@ fn player_move(
                         KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
                         KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
                         KeyCode::LShift => boost = settings.boost,
-
-
+                        KeyCode::O => boost = 1. / settings.boost, // slow motion mode
                         KeyCode::LBracket => { ry -= time.delta_seconds(); }, // yaw, pitch, roll.
                         KeyCode::RBracket => { ry += time.delta_seconds(); },
                         KeyCode::Q => { rx -= time.delta_seconds(); }, // yaw, pitch, roll.
