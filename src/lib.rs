@@ -103,11 +103,7 @@ fn player_move(
             transform.translation += velocity * time.delta_seconds() * settings.speed * boost;
 
             let window = get_primary_window_size(&windows);
-            let delta_x = {
-                let delta =  settings.speed * boost * rx / 10. * std::f32::consts::PI * 2.0;
-                // if pan_orbit.upside_down { -delta } else { delta }
-                delta
-            };
+            let delta_x = settings.speed * boost * rx / 100. * std::f32::consts::PI * 2.0;
             let delta_y = settings.speed * boost * ry / 100. * std::f32::consts::PI;
             let delta_z = settings.speed * boost * rz / 100. * std::f32::consts::PI;
             let yaw = Quat::from_rotation_y(-delta_x);
