@@ -43,13 +43,15 @@ fn toggle_grab_cursor(window: &mut Window) {
 fn initial_grab_cursor(mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         toggle_grab_cursor(window);
+    } else {
+        warn!("Primary window not found for `initial_grab_cursor`!");
     }
 }
 
 /// Spawns the `Camera3dBundle` to be controlled
 fn setup_player(mut commands: Commands) {
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
+        .spawn_bundle(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
@@ -102,7 +104,6 @@ fn player_move(
 
             transform.translation += velocity * time.delta_seconds() * settings.speed * boost;
 
-            let window = get_primary_window_size(&windows);
             let delta_x = settings.speed * boost * rx / 100. * std::f32::consts::PI * 2.0;
             let delta_y = settings.speed * boost * ry / 100. * std::f32::consts::PI;
             let delta_z = settings.speed * boost * rz / 100. * std::f32::consts::PI;
@@ -112,15 +113,10 @@ fn player_move(
             transform.rotation = yaw * transform.rotation; // rotate around global y axis
             transform.rotation = transform.rotation * pitch * roll; // rotate around local x axis
         }
+    } else {
+        warn!("Primary window not found for `player_move`!");
     }
 }
-
-fn get_primary_window_size(windows: &Res<Windows>) -> Vec2 {
-    let window = windows.get_primary().unwrap();
-    let window = Vec2::new(window.width() as f32, window.height() as f32);
-    window
-}
-
 
 /// Handles looking around if cursor is locked
 fn player_look(
@@ -150,6 +146,8 @@ fn player_look(
                     * Quat::from_axis_angle(Vec3::X, delta_state.pitch);
             }
         }
+    } else {
+        warn!("Primary window not found for `player_look`!");
     }
 }
 
@@ -158,6 +156,8 @@ fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
         if keys.just_pressed(KeyCode::Escape) {
             toggle_grab_cursor(window);
         }
+    } else {
+        warn!("Primary window not found for `cursor_grab`!");
     }
 }
 
