@@ -4,13 +4,14 @@
 ![docs.rs](https://img.shields.io/docsrs/bevy_flycam)
 
 
-A basic first-person fly camera for Bevy 0.8
+A not so basic first-person fly camera for Bevy 0.8 - this is a fork rounding out the features of the original.
+(pretty sure many of the things done here arn not wanted in upstream.)
 
 ## Controls
 * WASD to move horizontally
 * SPACE to ascend
-* LSHIFT to descend
-* ESC to grab/release cursor.
+* LSHIFT to run
+* ESC to grab/release cursor. (for wasm you'll have to link up to a button - see examples/scrolling)
 
 ## Comparison
 There are a few notable differences from [bevy_fly_camera](https://github.com/mcpar-land/bevy_fly_camera)...

@@ -128,8 +128,11 @@ fn player_look(
     mut state: ResMut<InputState>,
     motion: Res<Events<MouseMotion>>,
     mut query: Query<&mut Transform, With<FlyCam>>,
+    buttons: Res<Input<MouseButton>>,
 ) {
     if let Some(window) = windows.get_primary() {
+        let please_move = buttons.pressed(MouseButton::Left) || buttons.pressed(MouseButton::Right);
+
         #[cfg(target_arch = "wasm32")]
         {
             let browser_window = web_sys::window().expect("no global `window` exists");
@@ -137,12 +140,12 @@ fn player_look(
                 .document()
                 .expect("should have a document on window");
             let locked = document.pointer_lock_element().is_some();
-            if !locked {
+            if !locked && !please_move {
                 return;
             }
         }
         #[cfg(not(target_arch = "wasm32"))]
-        if !window.cursor_locked() {
+        if !window.cursor_locked() && !please_move {
             return;
         }
 
