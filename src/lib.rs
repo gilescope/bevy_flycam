@@ -1,5 +1,5 @@
 use bevy::ecs::event::{Events, ManualEventReader};
-use bevy::input::mouse::MouseMotion;
+use bevy::input::mouse::{MouseWheel, MouseMotion};
 use bevy::prelude::*;
 
 /// Keeps track of mouse motion events, pitch, and yaw
@@ -32,12 +32,14 @@ impl Default for MovementSettings {
 pub struct FlyCam;
 
 /// Grabs/ungrabs mouse cursor
+#[cfg(not(target_family="wasm"))]
 fn toggle_grab_cursor(window: &mut Window) {
     window.set_cursor_lock_mode(!window.cursor_locked());
     window.set_cursor_visibility(!window.cursor_visible());
 }
 
-/// Grabs the cursor when game first starts
+/// Grabs the cursor when game first starts (only works for non-wasm)
+#[cfg(not(target_family="wasm"))]
 fn initial_grab_cursor(mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         toggle_grab_cursor(window);
@@ -56,6 +58,19 @@ fn setup_player(mut commands: Commands) {
         .insert(FlyCam);
 }
 
+/// Returns the amount to boost or slow down by. (shift = run)
+fn get_boost(keys: &Input<KeyCode>, settings: &MovementSettings) -> f32 {
+    let mut boost = 1.;
+    for key in keys.get_pressed() {
+        match key {
+            KeyCode::LShift => boost = settings.boost,
+            KeyCode::O => boost = 1. / settings.boost, // slow motion mode
+            _ => (),
+        }
+    }
+    boost
+}
+
 /// Handles keyboard input and movement
 fn player_move(
     keys: Res<Input<KeyCode>>,
@@ -68,7 +83,7 @@ fn player_move(
         let local_z = transform.local_z();
         let forward = -Vec3::new(local_z.x, 0., local_z.z);
         let right = Vec3::new(local_z.z, 0., -local_z.x);
-        let mut boost = 1.;
+        let boost = get_boost(&keys, &settings);
         let mut rx = 0.;
         let mut ry = 0.;
         let mut rz = 0.;
@@ -81,8 +96,6 @@ fn player_move(
                 KeyCode::D | KeyCode::Right => velocity += right,
                 KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
                 KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
-                KeyCode::LShift => boost = settings.boost,
-                KeyCode::O => boost = 1. / settings.boost, // slow motion mode
                 KeyCode::LBracket => {
                     ry -= time.delta_seconds();
                 } // yaw, pitch, roll.
@@ -169,6 +182,9 @@ fn player_look(
     }
 }
 
+/// Long running processes are not allowed to grab the cursor in wasm - this must be done by
+/// some user activated short lived action. (see index.html)
+#[cfg(not(target_family="wasm"))]
 fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         if keys.just_pressed(KeyCode::Escape) {
@@ -179,6 +195,28 @@ fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
     }
 }
 
+/// the mouse-scroll does not change the field-of-view of the camera
+/// because if you change that too far the world goes inside out.
+/// Instead scroll moves forwards or backwards.
+pub fn scroll(
+	settings: Res<MovementSettings>,
+    keys: Res<Input<KeyCode>>,
+	mut mouse_wheel_events: EventReader<MouseWheel>,
+	mut query: Query<&mut Transform, With<FlyCam>>,
+) {
+	for event in mouse_wheel_events.iter() {
+		for mut viewport in query.iter_mut() {
+            // In browser this seems a lot more sensitive!
+			#[cfg(target_arch = "wasm32")]
+			let sensitivity: f32 = settings.sensitivity * 10.0;
+			#[cfg(not(target_arch = "wasm32"))]
+			let sensitivity: f32 = settings.sensitivity * 1024.0;
+            let forward = viewport.forward();
+			viewport.translation += forward * event.y * sensitivity * get_boost(&keys, &settings);
+		}
+	}
+}
+
 /// Contains everything needed to add first-person fly camera behavior to your game
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
@@ -186,9 +224,12 @@ impl Plugin for PlayerPlugin {
         app.init_resource::<InputState>()
             .init_resource::<MovementSettings>()
             .add_startup_system(setup_player)
-            .add_startup_system(initial_grab_cursor)
             .add_system(player_move)
             .add_system(player_look)
+            .add_system(scroll);
+
+        #[cfg(not(target_family="wasm"))]
+        app.add_startup_system(initial_grab_cursor)
             .add_system(cursor_grab);
     }
 }
@@ -199,9 +240,12 @@ impl Plugin for NoCameraPlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputState>()
             .init_resource::<MovementSettings>()
-            .add_startup_system(initial_grab_cursor)
             .add_system(player_move)
             .add_system(player_look)
+            .add_system(scroll);
+
+        #[cfg(not(target_family="wasm"))]
+        app.add_startup_system(initial_grab_cursor)
             .add_system(cursor_grab);
     }
 }

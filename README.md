@@ -22,6 +22,13 @@ There are a few notable differences from [bevy_fly_camera](https://github.com/mc
 * Single-line setup
 * A tiny bit faster?
 
+and differences from upstream:
+
+* Scroll moves the camera forwards / backwards
+* run (shift) and slow motion (s)
+* wasm support
+* hold down mouse button allows movement even if cursor not grabbed. 
+
 ## Usage
 1. Add to `Cargo.toml` or copy `lib.rs` to your own file
 ```toml
