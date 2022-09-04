@@ -1,3 +1,4 @@
+use bevy::prelude::StandardMaterial;
 use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Projection};
 use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 
@@ -11,11 +12,20 @@ enum ScrollType {
 }
 
 fn main() {
-    App::new()
-        .insert_resource(Msaa { samples: 4 })
-        .add_plugins(DefaultPlugins)
-        //NoCameraPlayerPlugin as we provide the camera
-        .add_plugin(NoCameraPlayerPlugin)
+    let mut app = App::new();
+    app.insert_resource(Msaa { samples: 4 });
+    #[cfg(target_family = "wasm")]
+    app.insert_resource(WindowDescriptor {
+        canvas: Some("canvas".into()), // CSS selector of the first canvas on the page.
+        ..default()
+    });
+    app.add_plugins(DefaultPlugins);
+
+    #[cfg(target_family = "wasm")]
+    app.add_plugin(bevy_web_fullscreen::FullViewportPlugin);
+
+    //NoCameraPlayerPlugin as we provide the camera
+    app.add_plugin(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             ..Default::default()
         })

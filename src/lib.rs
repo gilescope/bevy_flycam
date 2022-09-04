@@ -6,8 +6,6 @@ use bevy::prelude::*;
 #[derive(Default)]
 struct InputState {
     reader_motion: ManualEventReader<MouseMotion>,
-    pitch: f32,
-    yaw: f32,
 }
 
 /// Mouse sensitivity and movement speed
@@ -16,7 +14,7 @@ pub struct MovementSettings {
     pub speed: f32,
 
     /// How many times faster to move with shift held down?
-    pub boost: f32
+    pub boost: f32,
 }
 
 impl Default for MovementSettings {
@@ -24,7 +22,7 @@ impl Default for MovementSettings {
         Self {
             sensitivity: 0.00012,
             speed: 12.,
-            boost: 4.
+            boost: 4.,
         }
     }
 }
@@ -62,59 +60,64 @@ fn setup_player(mut commands: Commands) {
 fn player_move(
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
-    windows: Res<Windows>,
     settings: Res<MovementSettings>,
     mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
-    if let Some(window) = windows.get_primary() {
-        for mut transform in query.iter_mut() {
-            let mut velocity = Vec3::ZERO;
-            let local_z = transform.local_z();
-            let forward = -Vec3::new(local_z.x, 0., local_z.z);
-            let right = Vec3::new(local_z.z, 0., -local_z.x);
-            let mut boost = 1.;
-            let mut rx = 0.;
-            let mut ry = 0.;
-            let mut rz = 0.;
+    for mut transform in query.iter_mut() {
+        let mut velocity = Vec3::ZERO;
+        let local_z = transform.local_z();
+        let forward = -Vec3::new(local_z.x, 0., local_z.z);
+        let right = Vec3::new(local_z.z, 0., -local_z.x);
+        let mut boost = 1.;
+        let mut rx = 0.;
+        let mut ry = 0.;
+        let mut rz = 0.;
 
-            for key in keys.get_pressed() {
-                if window.cursor_locked() {
-                    match key {
-                        KeyCode::W | KeyCode::Up => velocity += forward,
-                        KeyCode::S | KeyCode::Down => velocity -= forward,
-                        KeyCode::A | KeyCode::Left => velocity -= right,
-                        KeyCode::D | KeyCode::Right => velocity += right,
-                        KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
-                        KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
-                        KeyCode::LShift => boost = settings.boost,
-                        KeyCode::O => boost = 1. / settings.boost, // slow motion mode
-                        KeyCode::LBracket => { ry -= time.delta_seconds(); }, // yaw, pitch, roll.
-                        KeyCode::RBracket => { ry += time.delta_seconds(); },
-                        KeyCode::Q => { rx -= time.delta_seconds(); }, // yaw, pitch, roll.
-                        KeyCode::E => { rx += time.delta_seconds(); },
-                        KeyCode::Z => { rz -= time.delta_seconds(); }, // yaw, pitch, roll.
-                        KeyCode::X => { rz += time.delta_seconds(); },
-                        // Note: bevy 0.7 bug: if you press LShift and then Comma no additional key seems to be pressed
-                        _ => (),
-                    }
+        for key in keys.get_pressed() {
+            match key {
+                KeyCode::W | KeyCode::Up => velocity += forward,
+                KeyCode::S | KeyCode::Down => velocity -= forward,
+                KeyCode::A | KeyCode::Left => velocity -= right,
+                KeyCode::D | KeyCode::Right => velocity += right,
+                KeyCode::Space | KeyCode::Period => velocity += Vec3::Y,
+                KeyCode::RShift | KeyCode::Comma => velocity -= Vec3::Y,
+                KeyCode::LShift => boost = settings.boost,
+                KeyCode::O => boost = 1. / settings.boost, // slow motion mode
+                KeyCode::LBracket => {
+                    ry -= time.delta_seconds();
+                } // yaw, pitch, roll.
+                KeyCode::RBracket => {
+                    ry += time.delta_seconds();
                 }
+                KeyCode::Q => {
+                    rx -= time.delta_seconds();
+                } // yaw, pitch, roll.
+                KeyCode::E => {
+                    rx += time.delta_seconds();
+                }
+                KeyCode::Z => {
+                    rz -= time.delta_seconds();
+                } // yaw, pitch, roll.
+                KeyCode::X => {
+                    rz += time.delta_seconds();
+                }
+                // Note: bevy 0.7 bug: if you press LShift and then Comma no additional key seems to be pressed
+                _ => (),
             }
-            
-            velocity = velocity.normalize_or_zero();
-
-            transform.translation += velocity * time.delta_seconds() * settings.speed * boost;
-
-            let delta_x = settings.speed * boost * rx / 100. * std::f32::consts::PI * 2.0;
-            let delta_y = settings.speed * boost * ry / 100. * std::f32::consts::PI;
-            let delta_z = settings.speed * boost * rz / 100. * std::f32::consts::PI;
-            let yaw = Quat::from_rotation_y(-delta_x);
-            let pitch = Quat::from_rotation_x(-delta_y);
-            let roll = Quat::from_rotation_z(-delta_z);
-            transform.rotation = yaw * transform.rotation; // rotate around global y axis
-            transform.rotation = transform.rotation * pitch * roll; // rotate around local x axis
         }
-    } else {
-        warn!("Primary window not found for `player_move`!");
+
+        velocity = velocity.normalize_or_zero();
+
+        transform.translation += velocity * time.delta_seconds() * settings.speed * boost;
+
+        let delta_x = settings.speed * boost * rx / 100. * std::f32::consts::PI * 2.0;
+        let delta_y = settings.speed * boost * ry / 100. * std::f32::consts::PI;
+        let delta_z = settings.speed * boost * rz / 100. * std::f32::consts::PI;
+        let yaw = Quat::from_rotation_y(-delta_x);
+        let pitch = Quat::from_rotation_x(-delta_y);
+        let roll = Quat::from_rotation_z(-delta_z);
+        transform.rotation = yaw * transform.rotation; // rotate around global y axis
+        transform.rotation = transform.rotation * pitch * roll; // rotate around local x axis
     }
 }
 
@@ -127,23 +130,35 @@ fn player_look(
     mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
     if let Some(window) = windows.get_primary() {
-        let mut delta_state = state.as_mut();
-        for mut transform in query.iter_mut() {
-            for ev in delta_state.reader_motion.iter(&motion) {
-                if window.cursor_locked() {
-                    // Using smallest of height or width ensures equal vertical and horizontal sensitivity
-                    let window_scale = window.height().min(window.width());
-                    delta_state.pitch -=
-                        (settings.sensitivity * ev.delta.y * window_scale).to_radians();
-                    delta_state.yaw -=
-                        (settings.sensitivity * ev.delta.x * window_scale).to_radians();
-                }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let browser_window = web_sys::window().expect("no global `window` exists");
+            let document = browser_window
+                .document()
+                .expect("should have a document on window");
+            let locked = document.pointer_lock_element().is_some();
+            if !locked {
+                return;
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if !window.cursor_locked() {
+            return;
+        }
 
-                delta_state.pitch = delta_state.pitch.clamp(-1.54, 1.54);
+        for mut transform in query.iter_mut() {
+            for ev in state.reader_motion.iter(&motion) {
+                let window_scale = window.height().min(window.width());
 
                 // Order is important to prevent unintended roll
-                transform.rotation = Quat::from_axis_angle(Vec3::Y, delta_state.yaw)
-                    * Quat::from_axis_angle(Vec3::X, delta_state.pitch);
+                let yaw = Quat::from_rotation_y(
+                    -(settings.sensitivity * ev.delta.x * window_scale).to_radians(),
+                );
+                let pitch = Quat::from_rotation_x(
+                    -(settings.sensitivity * ev.delta.y * window_scale).to_radians(),
+                );
+                transform.rotation = yaw * transform.rotation; // rotate around global y axis
+                transform.rotation *= pitch; // rotate around local x axis
             }
         }
     } else {

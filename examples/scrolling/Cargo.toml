@@ -1,0 +1,17 @@
+[package]
+name = "scrolling"
+edition = "2021"
+license = "ISC"
+resolver = "2"
+version = "0.0.1"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+bevy = { version = "0.8", default-features = true, features = ["bevy_render", "bevy_core_pipeline", "bevy_asset"] }
+bevy_flycam = { path = "../.." }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy_web_fullscreen = { git = "https://github.com/ostwilkens/bevy_web_fullscreen.git" }
+
+[dev-dependencies]
+bevy = { version = "0.8", default-features = false, features = ["x11", "wayland", "bevy_pbr", "bevy_core_pipeline", "bevy_asset"] }
