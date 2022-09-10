@@ -17,7 +17,7 @@ resolver = "2"
 bevy = { version = "0.8", default-features = false, features = ["bevy_render", "bevy_core_pipeline", "bevy_asset"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys={ version = "0.3", features = [ 'console', 'MouseEvent' ] }
+web-sys={ version = "0.3", features = [ 'console', 'MouseEvent', 'Gamepad' ] }
 wasm-bindgen = "0.2"
 gloo-events= "0.1"
 

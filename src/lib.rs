@@ -1,5 +1,5 @@
 use bevy::ecs::event::{Events, ManualEventReader};
-use bevy::input::mouse::{MouseWheel, MouseMotion};
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 
 /// Keeps track of mouse motion events, pitch, and yaw
@@ -32,14 +32,14 @@ impl Default for MovementSettings {
 pub struct FlyCam;
 
 /// Grabs/ungrabs mouse cursor
-#[cfg(not(target_family="wasm"))]
+#[cfg(not(target_family = "wasm"))]
 fn toggle_grab_cursor(window: &mut Window) {
     window.set_cursor_lock_mode(!window.cursor_locked());
     window.set_cursor_visibility(!window.cursor_visible());
 }
 
 /// Grabs the cursor when game first starts (only works for non-wasm)
-#[cfg(not(target_family="wasm"))]
+#[cfg(not(target_family = "wasm"))]
 fn initial_grab_cursor(mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         toggle_grab_cursor(window);
@@ -134,6 +134,86 @@ fn player_move(
     }
 }
 
+pub struct Scale {
+    pub rotate_scale: f32,
+    pub translate_scale: f32,
+}
+
+impl Default for Scale {
+    fn default() -> Self {
+        Self {
+            rotate_scale: 0.0001,
+            translate_scale: 0.0001,
+        }
+    }
+}
+
+/// This is tuned to a 3dconnection space mouse.
+/// Other controlers might require differnet mappings.
+#[cfg(target_family = "wasm")]
+fn gamepad(
+    keys: Res<Input<KeyCode>>,
+    settings: Res<MovementSettings>,
+    mut query: Query<&mut Transform, With<FlyCam>>,
+) {
+    let window = web_sys::window().expect("no global `window` exists");
+    let navigator = window.navigator();
+    let pads = navigator
+        .get_gamepads()
+        .expect("gamepad list even if not plugged in");
+
+    for gp in pads.iter() {
+        if !gp.is_null() {
+            for mut transform in query.iter_mut() {
+                let g: web_sys::Gamepad = gp.clone().into();
+                let axes = g.axes();
+
+                let boost = get_boost(&keys, &settings);
+
+                let scale = Scale {
+                    rotate_scale: 0.07,
+                    translate_scale: 2.5,
+                };
+
+                let (x, y, z) = (
+                    axes.at(0).as_f64().unwrap_or_default() as f32 * scale.translate_scale * boost,
+                    axes.at(2).as_f64().unwrap_or_default() as f32
+                        * scale.translate_scale
+                        * boost
+                        * -1.,
+                    axes.at(1).as_f64().unwrap_or_default() as f32
+                        * scale.translate_scale
+                        * boost
+                        * -1.,
+                );
+                // Suggestion to cube inputs to give a nice gain curve:
+                // https://www.chiefdelphi.com/t/paper-joystick-sensitivity-gain-adjustment/107280
+                let (x, y, z) = (x * x * x, y * y * y, z * z * z);
+
+                let forward = transform.forward();
+                let right = transform.right();
+                let up = transform.up();
+
+                transform.translation += x * right + y * up + z * forward;
+
+                let boost = boost.min(1.); // Honestly you don't want faster rotations.
+
+                let rx = axes.at(3).as_f64().unwrap_or_default() as f32;
+                let ry = axes.at(5).as_f64().unwrap_or_default() as f32;
+                let rz = axes.at(4).as_f64().unwrap_or_default() as f32;
+                //let (rx,ry,rz) = (rx*rx*rx, ry*ry*ry, rz*rz*rz);
+                let rot = Quat::from_euler(
+                    EulerRot::XYZ,
+                    rx * scale.rotate_scale * boost,
+                    ry * scale.rotate_scale * boost * -1.,
+                    rz * scale.rotate_scale * boost,
+                );
+                transform.rotation *= rot;
+            }
+        }
+    }
+}
+
 /// Handles looking around if cursor is locked
 fn player_look(
     settings: Res<MovementSettings>,
@@ -184,7 +264,7 @@ fn player_look(
 
 /// Long running processes are not allowed to grab the cursor in wasm - this must be done by
 /// some user activated short lived action. (see index.html)
-#[cfg(not(target_family="wasm"))]
+#[cfg(not(target_family = "wasm"))]
 fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         if keys.just_pressed(KeyCode::Escape) {
@@ -199,22 +279,22 @@ fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
 /// because if you change that too far the world goes inside out.
 /// Instead scroll moves forwards or backwards.
 pub fn scroll(
-	settings: Res<MovementSettings>,
+    settings: Res<MovementSettings>,
     keys: Res<Input<KeyCode>>,
-	mut mouse_wheel_events: EventReader<MouseWheel>,
-	mut query: Query<&mut Transform, With<FlyCam>>,
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut query: Query<&mut Transform, With<FlyCam>>,
 ) {
-	for event in mouse_wheel_events.iter() {
-		for mut viewport in query.iter_mut() {
+    for event in mouse_wheel_events.iter() {
+        for mut viewport in query.iter_mut() {
             // In browser this seems a lot more sensitive!
-			#[cfg(target_arch = "wasm32")]
-			let sensitivity: f32 = settings.sensitivity * 10.0;
-			#[cfg(not(target_arch = "wasm32"))]
-			let sensitivity: f32 = settings.sensitivity * 1024.0;
+            #[cfg(target_arch = "wasm32")]
+            let sensitivity: f32 = settings.sensitivity * 10.0;
+            #[cfg(not(target_arch = "wasm32"))]
+            let sensitivity: f32 = settings.sensitivity * 1024.0;
             let forward = viewport.forward();
-			viewport.translation += forward * event.y * sensitivity * get_boost(&keys, &settings);
-		}
-	}
+            viewport.translation += forward * event.y * sensitivity * get_boost(&keys, &settings);
+        }
+    }
 }
 
 /// Contains everything needed to add first-person fly camera behavior to your game
@@ -228,7 +308,10 @@ impl Plugin for PlayerPlugin {
             .add_system(player_look)
             .add_system(scroll);
 
-        #[cfg(not(target_family="wasm"))]
+        #[cfg(target_family = "wasm")]
+        app.add_system(gamepad);
+
+        #[cfg(not(target_family = "wasm"))]
         app.add_startup_system(initial_grab_cursor)
             .add_system(cursor_grab);
     }
@@ -244,7 +327,10 @@ impl Plugin for NoCameraPlayerPlugin {
             .add_system(player_look)
             .add_system(scroll);
 
-        #[cfg(not(target_family="wasm"))]
+        #[cfg(target_family = "wasm")]
+        app.add_system(gamepad);
+
+        #[cfg(not(target_family = "wasm"))]
         app.add_startup_system(initial_grab_cursor)
             .add_system(cursor_grab);
     }
